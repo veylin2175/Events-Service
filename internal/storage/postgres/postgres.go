@@ -199,11 +199,13 @@ func (s *Storage) CreateUser() (int64, error) {
 	return userID, nil
 }
 
-func (s *Storage) Close() {
+func (s *Storage) Close() error {
 	err := s.db.Close()
 	if err != nil {
-		return
+		return err
 	}
+
+	return nil
 }
 
 func scanEvents(rows *sql.Rows) ([]models.Event, error) {
