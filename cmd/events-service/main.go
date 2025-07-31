@@ -3,6 +3,8 @@ package main
 import (
 	"Events-Service/internal/config"
 	"Events-Service/internal/lib/logger/handlers/slogpretty"
+	"Events-Service/internal/lib/logger/sl"
+	"Events-Service/internal/storage/postgres"
 	"log/slog"
 	"os"
 )
@@ -20,6 +22,14 @@ func main() {
 
 	log.Info("Starting url-shortener", slog.String("env", cfg.Env))
 	log.Debug("debug messages are enabled")
+
+	storage, err := postgres.InitDB(cfg)
+	if err != nil {
+		log.Error("failed to init storage", sl.Err(err))
+		os.Exit(1)
+	}
+
+	_ = storage
 }
 
 func setupLogger(env string) *slog.Logger {
