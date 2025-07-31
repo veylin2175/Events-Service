@@ -26,7 +26,7 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 
-	log.Info("Starting url-shortener", slog.String("env", cfg.Env))
+	log.Info("Starting events service", slog.String("env", cfg.Env))
 	log.Debug("debug messages are enabled")
 
 	storage, err := postgres.InitDB(cfg)
@@ -62,7 +62,7 @@ func main() {
 
 	sign := <-stop
 
-	log.Info("application stopped", slog.String("signal", sign.String()))
+	log.Info("server stopped", slog.String("signal", sign.String()))
 
 	if err = storage.Close(); err != nil {
 		log.Error("failed to close database", slog.String("error", err.Error()))
