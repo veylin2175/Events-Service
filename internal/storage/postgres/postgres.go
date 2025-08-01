@@ -32,7 +32,7 @@ func InitDB(cfg *config.Config) (*Storage, error) {
 		return nil, err
 	}
 
-	if err := db.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
 		log.Fatalf("couldn't connect to the DB: %v", err)
 		return nil, err
 	}
@@ -125,12 +125,13 @@ func (s *Storage) DeleteEvent(userID, eventID int64) error {
 	return nil
 }
 
-func (s *Storage) GetEventsByDay(userID int64, day time.Time) ([]models.Event, error) {
+func (s *Storage) GetEventsByDay(userID int64, day string) ([]models.Event, error) {
+	date, err := time.Parse("2006-01-02", day)
 	rows, err := s.db.Query(
 		`SELECT id, date, text FROM event 
          WHERE user_id = $1 AND date = $2 
          ORDER BY date`,
-		userID, day.Format("2006-01-02"), // Формат: YYYY-MM-DD
+		userID, date,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get daily events: %v", err)
@@ -212,12 +213,17 @@ func scanEvents(rows *sql.Rows) ([]models.Event, error) {
 	var events []models.Event
 	for rows.Next() {
 		var e models.Event
-		var date time.Time
-		if err := rows.Scan(&e.ID, &date, &e.Text); err != nil {
+		var eventID int64
+		var eventDate time.Time
+		if err := rows.Scan(&eventID, &eventDate, &e.Text); err != nil {
 			return nil, err
 		}
-		e.Date = date.Format("2006-01-02")
+		e.Date = eventDate.Format("2006-01-02")
 		events = append(events, e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return events, nil
 }

@@ -2,6 +2,11 @@ package main
 
 import (
 	"Events-Service/internal/config"
+	"Events-Service/internal/http-server/handlers/event/createEvent"
+	"Events-Service/internal/http-server/handlers/event/deleteEvent"
+	"Events-Service/internal/http-server/handlers/event/getEvents"
+	"Events-Service/internal/http-server/handlers/event/updateEvent"
+	"Events-Service/internal/http-server/handlers/user"
 	"Events-Service/internal/http-server/middleware/mwlogger"
 	"Events-Service/internal/lib/logger/handlers/slogpretty"
 	"Events-Service/internal/lib/logger/sl"
@@ -38,10 +43,17 @@ func main() {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
-	router.Use(middleware.Logger)
 	router.Use(mwlogger.New(log))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
+
+	router.Post("/create_user", user.New(log, storage))
+	router.Post("/create_event", createEvent.New(log, storage))
+	router.Post("/update_event", updateEvent.New(log, storage))
+	router.Post("/delete_event", deleteEvent.New(log, storage))
+	router.Get("/events_for_day", getEvents.ByDay(log, storage))
+	router.Get("/events_for_week", getEvents.ByWeek(log, storage))
+	router.Get("/events_for_month", getEvents.ByMonth(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.HTTPServer.Address))
 
