@@ -17,6 +17,7 @@ type Response struct {
 	UserId int64 `json:"user_id"`
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.51.1 --name=UserCreator
 type UserCreator interface {
 	CreateUser() (int64, error)
 }
@@ -34,7 +35,7 @@ func New(log *slog.Logger, userCreator UserCreator) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -47,7 +48,7 @@ func New(log *slog.Logger, userCreator UserCreator) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -56,7 +57,7 @@ func New(log *slog.Logger, userCreator UserCreator) http.HandlerFunc {
 		userId, err := userCreator.CreateUser()
 		if err != nil {
 			log.Error("failed to create user", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to create user"))
 
 			return
