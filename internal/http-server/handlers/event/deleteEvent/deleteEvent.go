@@ -12,14 +12,15 @@ import (
 )
 
 type Request struct {
-	UserId  int64 `json:"user_id"`
-	EventId int64 `json:"event_id"`
+	UserId  int64 `json:"user_id" validate:"required"`
+	EventId int64 `json:"event_id" validate:"required"`
 }
 
 type Response struct {
 	response.Response
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.51.1 --name=DeleteEvent
 type DeleteEvent interface {
 	DeleteEvent(userID, eventID int64) error
 }
@@ -37,7 +38,7 @@ func New(log *slog.Logger, event DeleteEvent) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -50,7 +51,7 @@ func New(log *slog.Logger, event DeleteEvent) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -60,14 +61,14 @@ func New(log *slog.Logger, event DeleteEvent) http.HandlerFunc {
 		err = event.DeleteEvent(req.UserId, req.EventId)
 		if errors.Is(err, storage.ErrEventNotFound) {
 			log.Info("event not found", slog.Int64("event", eventId))
-
+			render.Status(r, http.StatusServiceUnavailable)
 			render.JSON(w, r, response.Error("event not found"))
 
 			return
 		}
 		if err != nil {
 			log.Error("failed to delete event", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to delete event"))
 
 			return

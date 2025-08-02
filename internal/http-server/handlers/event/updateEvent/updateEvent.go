@@ -12,16 +12,17 @@ import (
 )
 
 type Request struct {
-	UserId  int64  `json:"user_id"`
-	EventId int64  `json:"event_id"`
-	Date    string `json:"date"`
-	Text    string `json:"text"`
+	UserId  int64  `json:"user_id" validate:"required"`
+	EventId int64  `json:"event_id" validate:"required"`
+	Date    string `json:"date" validate:"required"`
+	Text    string `json:"text" validate:"required"`
 }
 
 type Response struct {
 	response.Response
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.51.1 --name=UpdateEvent
 type UpdateEvent interface {
 	UpdateEvent(userID, eventID int64, dateStr, text string) error
 }
@@ -39,7 +40,7 @@ func New(log *slog.Logger, event UpdateEvent) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -52,7 +53,7 @@ func New(log *slog.Logger, event UpdateEvent) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -62,14 +63,14 @@ func New(log *slog.Logger, event UpdateEvent) http.HandlerFunc {
 		err = event.UpdateEvent(req.UserId, req.EventId, req.Date, req.Text)
 		if errors.Is(err, storage.ErrEventNotFound) {
 			log.Info("event not found", slog.Int64("event", eventId))
-
+			render.Status(r, http.StatusServiceUnavailable)
 			render.JSON(w, r, response.Error("event not found"))
 
 			return
 		}
 		if err != nil {
 			log.Error("failed to update event", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to update event"))
 
 			return

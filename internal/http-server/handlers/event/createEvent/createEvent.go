@@ -12,9 +12,9 @@ import (
 )
 
 type Request struct {
-	UserId int64  `json:"user_id"`
-	Date   string `json:"date"`
-	Text   string `json:"text"`
+	UserId int64  `json:"user_id" validate:"required"`
+	Date   string `json:"date" validate:"required"`
+	Text   string `json:"text" validate:"required"`
 }
 
 type Response struct {
@@ -22,6 +22,7 @@ type Response struct {
 	EventId int64 `json:"event_id"`
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.51.1 --name=CreateEvent
 type CreateEvent interface {
 	SaveEvent(userID int64, dateStr, text string) (int64, error)
 }
@@ -39,7 +40,7 @@ func New(log *slog.Logger, event CreateEvent) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -52,7 +53,7 @@ func New(log *slog.Logger, event CreateEvent) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -61,14 +62,14 @@ func New(log *slog.Logger, event CreateEvent) http.HandlerFunc {
 		eventId, err := event.SaveEvent(req.UserId, req.Date, req.Text)
 		if errors.Is(err, storage.ErrEventExists) {
 			log.Info("event already exists", slog.Int64("event", eventId))
-
+			render.Status(r, http.StatusServiceUnavailable)
 			render.JSON(w, r, response.Error("event already exists"))
 
 			return
 		}
 		if err != nil {
 			log.Error("failed to add event", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to add event"))
 
 			return

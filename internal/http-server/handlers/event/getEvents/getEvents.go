@@ -27,6 +27,7 @@ type Response struct {
 	Events []EventResponse `json:"events"`
 }
 
+//go:generate go run github.com/vektra/mockery/v2@v2.51.1 --name=GetEvents
 type GetEvents interface {
 	GetEventsByDay(userID int64, date string) ([]models.Event, error)
 	GetEventsByWeek(userID int64, date time.Time) ([]models.Event, error)
@@ -46,7 +47,7 @@ func ByDay(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -59,7 +60,7 @@ func ByDay(log *slog.Logger, event GetEvents) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -68,7 +69,7 @@ func ByDay(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		events, err := event.GetEventsByDay(req.UserId, req.Date)
 		if err != nil {
 			log.Error("failed to get events", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to get events"))
 
 			return
@@ -101,7 +102,7 @@ func ByWeek(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -114,7 +115,7 @@ func ByWeek(log *slog.Logger, event GetEvents) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -123,6 +124,7 @@ func ByWeek(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		parsedDate, err := time.Parse("2006-01-02", req.Date)
 		if err != nil {
 			log.Error("invalid date format", sl.Err(err))
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("invalid date format, use YYYY-MM-DD"))
 			return
 		}
@@ -130,7 +132,7 @@ func ByWeek(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		events, err := event.GetEventsByWeek(req.UserId, parsedDate)
 		if err != nil {
 			log.Error("failed to get events", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to get events"))
 
 			return
@@ -163,7 +165,7 @@ func ByMonth(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request"))
 
 			return
@@ -176,7 +178,7 @@ func ByMonth(log *slog.Logger, event GetEvents) http.HandlerFunc {
 			errors.As(err, &validateErr)
 
 			log.Error("invalid request", sl.Err(err))
-
+			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validateErr))
 
 			return
@@ -185,6 +187,7 @@ func ByMonth(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		parsedDate, err := time.Parse("2006-01-02", req.Date)
 		if err != nil {
 			log.Error("invalid date format", sl.Err(err))
+			render.Status(r, http.StatusServiceUnavailable)
 			render.JSON(w, r, response.Error("invalid date format, use YYYY-MM-DD"))
 			return
 		}
@@ -195,7 +198,7 @@ func ByMonth(log *slog.Logger, event GetEvents) http.HandlerFunc {
 		events, err := event.GetEventsByMonth(req.UserId, year, month)
 		if err != nil {
 			log.Error("failed to get events", sl.Err(err))
-
+			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to get events"))
 
 			return
